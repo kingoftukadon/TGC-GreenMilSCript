@@ -1,0 +1,46 @@
+/**
+ * @NApiVersion 2.1
+ * @NScriptType ClientScript
+ *
+ * Notes:
+ * Shows a warning when the customer requires a PO number before invoicing
+ * but the Sales Order PO/Check # field is empty.
+ */
+define(['N/ui/dialog'], (dialog) => {
+    const FIELD_PO_CHECK_NUMBER = 'otherrefnum';
+    const FIELD_CUSTOMER_PO_REQUIRED = 'custbody_customer_po_required_before_invoicing'; // Replace with actual sourced field ID
+
+    function pageInit(context) {
+        showPoRequiredWarning(context.currentRecord);
+    }
+
+    function fieldChanged(context) {
+        if (context.fieldId !== FIELD_PO_CHECK_NUMBER) {
+            return;
+        }
+
+        showPoRequiredWarning(context.currentRecord);
+    }
+
+    function showPoRequiredWarning(currentRecord) {
+        const poRequired = currentRecord.getValue({
+            fieldId: FIELD_CUSTOMER_PO_REQUIRED
+        });
+
+        const poNumber = currentRecord.getValue({
+            fieldId: FIELD_PO_CHECK_NUMBER
+        });
+
+        if (poRequired === true && !poNumber) {
+            dialog.alert({
+                title: 'PO Number Required',
+                message: 'This customer requires all orders to have a PO number before invoicing. This order does not have one.'
+            });
+        }
+    }
+
+    return {
+        pageInit,
+        fieldChanged
+    };
+});

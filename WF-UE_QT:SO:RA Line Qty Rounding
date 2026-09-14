@@ -1,0 +1,64 @@
+/**
+ * @NApiVersion 2.1
+ * @NScriptType UserEventScript
+ *
+ * Notes:
+ * The workflow QT/SO/RA Line Qty Rounding rounds item line quantities up
+ * before submit, except for the excluded item list.
+ */
+define([], () => {
+    const SUBLIST_ITEM = 'item';
+    const FIELD_ITEM = 'item';
+    const FIELD_QUANTITY = 'quantity';
+
+    const EXCLUDED_ITEM_IDS = [
+        'GMRW250V',
+        'GMMKT500V',
+        'GMRW500V',
+        'GMRRS250',
+        'GMRRS500'
+    ];
+
+    function beforeSubmit(context) {
+        const transaction = context.newRecord;
+
+        const lineCount = transaction.getLineCount({
+            sublistId: SUBLIST_ITEM
+        });
+
+        for (let i = 0; i < lineCount; i++) {
+            const item = transaction.getSublistText({
+                sublistId: SUBLIST_ITEM,
+                fieldId: FIELD_ITEM,
+                line: i
+            });
+
+            if (EXCLUDED_ITEM_IDS.includes(item)) {
+                continue;
+            }
+
+            const quantity = transaction.getSublistValue({
+                sublistId: SUBLIST_ITEM,
+                fieldId: FIELD_QUANTITY,
+                line: i
+            });
+
+            if (!quantity) {
+                continue;
+            }
+
+            const roundedQuantity = Math.ceil(Number(quantity));
+
+            transaction.setSublistValue({
+                sublistId: SUBLIST_ITEM,
+                fieldId: FIELD_QUANTITY,
+                line: i,
+                value: roundedQuantity
+            });
+        }
+    }
+
+    return {
+        beforeSubmit
+    };
+});

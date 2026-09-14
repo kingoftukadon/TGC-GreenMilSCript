@@ -1,0 +1,63 @@
+
+/**
+ * @NApiVersion 2.1
+ * @NScriptType UserEventScript
+ * 
+ * Notes:
+ * The workflow uses a custom workflow field named Gas on Order Boolean to identify if the Sales Order contains an FGAS item.
+    *    Findings:
+    *     Before the Sales Order is submitted, the workflow first sets Gas on Order Boolean = False. It then checks the item lines. If any line has FGAS Item = True, the workflow sets Gas on Order Boolean = True.
+    *    Once Gas on Order Boolean = True, the workflow sets:
+    *     - Order Status = Pending Approval
+    *     - Pending Approval Reason = F-GAS Invalid
+ * 
+ */
+define([], () => {
+    const ORDER_STATUS_PENDING_APPROVAL = 'A'; 
+    const PENDING_APPROVAL_REASON_FGAS_INVALID = 'F_GAS_INVALID'; 
+
+    const FIELD_PENDING_APPROVAL_REASON = 'custbody_pending_approval_reason'; 
+    const FIELD_FGAS_ITEM = 'custitem_fgas_item'; 
+
+    function beforeSubmit(context) {
+        if (context.type !== context.UserEventType.CREATE) {
+            return;
+        }
+
+        const salesOrder = context.newRecord;
+        const lineCount = salesOrder.getLineCount({
+            sublistId: 'item'
+        });
+
+        let hasFgasItem = false;
+
+        for (let i = 0; i < lineCount; i++) {
+            const isFgasItem = salesOrder.getSublistValue({
+                sublistId: 'item',
+                fieldId: FIELD_FGAS_ITEM,
+                line: i
+            });
+
+            if (isFgasItem === true || isFgasItem === 'T') {
+                hasFgasItem = true;
+                break;
+            }
+        }
+
+        if (hasFgasItem) {
+            salesOrder.setValue({
+                fieldId: 'orderstatus',
+                value: ORDER_STATUS_PENDING_APPROVAL
+            });
+
+            salesOrder.setValue({
+                fieldId: FIELD_PENDING_APPROVAL_REASON,
+                value: PENDING_APPROVAL_REASON_FGAS_INVALID
+            });
+        }
+    }
+
+    return {
+        beforeSubmit
+    };
+});

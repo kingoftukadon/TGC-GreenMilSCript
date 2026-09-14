@@ -1,0 +1,36 @@
+/**
+ * @NApiVersion 2.1
+ * @NScriptType UserEventScript
+ *
+ * Notes:
+ * Sets DNI to True when the customer requires a PO number before invoicing
+ * and the Sales Order PO/Check # field is empty.
+ */
+define([], () => {
+    const FIELD_DNI = 'custbody4';
+    const FIELD_PO_CHECK_NUMBER = 'otherrefnum';
+    const FIELD_CUSTOMER_PO_REQUIRED = 'custbody_customer_po_required_before_invoicing'; // Replace with actual sourced field ID
+
+    function beforeSubmit(context) {
+        const salesOrder = context.newRecord;
+
+        const poRequired = salesOrder.getValue({
+            fieldId: FIELD_CUSTOMER_PO_REQUIRED
+        });
+
+        const poNumber = salesOrder.getValue({
+            fieldId: FIELD_PO_CHECK_NUMBER
+        });
+
+        if (poRequired === true && !poNumber) {
+            salesOrder.setValue({
+                fieldId: FIELD_DNI,
+                value: true
+            });
+        }
+    }
+
+    return {
+        beforeSubmit
+    };
+});

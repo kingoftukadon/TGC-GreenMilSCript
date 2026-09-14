@@ -1,0 +1,129 @@
+/**
+ * @NApiVersion 2.1
+ * @NScriptType UserEventScript
+ *
+ * Notes:
+ * Replaces workflow Customer Custom Delivery Pricing (NR).
+ * Handles Send Via Carrier display control, Auto Delivery Price defaulting,
+ * and Ship Via defaulting before the transaction form loads.
+ */
+define(['N/runtime', 'N/search', 'N/ui/serverWidget'], (runtime, search, serverWidget) => {
+    const FIELD_CUSTOMER = 'entity';
+    const FIELD_CREATED_FROM = 'createdfrom';
+    const FIELD_SHIP_VIA = 'shipmethod';
+    const FIELD_SEND_VIA_CARRIER = 'custbody_send_via_carrier'; // Confirm field ID
+    const FIELD_AUTO_DELIVERY_PRICE = 'custbody_auto_delivery_price'; // Confirm field ID
+    const FIELD_DEFAULT_DELIVERY_OPTION = 'custbody_default_delivery_option'; // Confirm field ID
+
+    const SHIP_VIA_SAMEDAY = '5';
+    const ROLE_ADMINISTRATOR = '3';
+    const USER_CHRIS_TAME = 'CHRIS_TAME_INTERNAL_ID'; // Replace with actual employee internal ID
+
+    function beforeLoad(context) {
+        const transaction = context.newRecord;
+        const form = context.form;
+
+        const customerId = transaction.getValue({ fieldId: FIELD_CUSTOMER });
+        const createdFrom = transaction.getValue({ fieldId: FIELD_CREATED_FROM });
+        const shipVia = transaction.getValue({ fieldId: FIELD_SHIP_VIA });
+
+        if (customerId) {
+            applySendViaCarrierDisplay(form, customerId);
+            applyDefaultShipVia(transaction, customerId, createdFrom);
+        }
+
+        if (String(shipVia) !== SHIP_VIA_SAMEDAY) {
+            transaction.setValue({
+                fieldId: FIELD_AUTO_DELIVERY_PRICE,
+                value: true
+            });
+        }
+
+        if (createdFrom) {
+            applyCreatedFromAutoDeliveryPrice(transaction, createdFrom);
+        }
+    }
+
+    function applySendViaCarrierDisplay(form, customerId) {
+        const currentUser = runtime.getCurrentUser();
+
+        const customerFields = search.lookupFields({
+            type: search.Type.CUSTOMER,
+            id: customerId,
+            columns: [
+                'salesrep',
+                'custentity_do_not_send_orders_via_carrier'
+            ]
+        });
+
+        const doNotSendViaCarrier = customerFields.custentity_do_not_send_orders_via_carrier === true;
+        const salesRepId = customerFields.salesrep && customerFields.salesrep.length
+            ? String(customerFields.salesrep[0].value)
+            : '';
+
+        const isCustomerSalesRep = String(currentUser.id) === salesRepId;
+        const isChrisTame = String(currentUser.id) === USER_CHRIS_TAME;
+        const isAdministrator = String(currentUser.role) === ROLE_ADMINISTRATOR;
+
+        if (!doNotSendViaCarrier || isCustomerSalesRep || isChrisTame || isAdministrator) {
+            return;
+        }
+
+        const sendViaCarrierField = form.getField({
+            id: FIELD_SEND_VIA_CARRIER
+        });
+
+        if (sendViaCarrierField) {
+            sendViaCarrierField.updateDisplayType({
+                displayType: serverWidget.FieldDisplayType.DISABLED
+            });
+        }
+    }
+
+    function applyDefaultShipVia(transaction, customerId, createdFrom) {
+        if (createdFrom) {
+            return;
+        }
+
+        const defaultDeliveryOption = transaction.getValue({
+            fieldId: FIELD_DEFAULT_DELIVERY_OPTION
+        });
+
+        if (!customerId || !defaultDeliveryOption) {
+            return;
+        }
+
+        transaction.setValue({
+            fieldId: FIELD_SHIP_VIA,
+            value: defaultDeliveryOption
+        });
+    }
+
+    function applyCreatedFromAutoDeliveryPrice(transaction, createdFromId) {
+        const createdFromFields = search.lookupFields({
+            type: search.Type.TRANSACTION,
+            id: createdFromId,
+            columns: [
+                'type',
+                FIELD_AUTO_DELIVERY_PRICE
+            ]
+        });
+
+        const createdFromType = createdFromFields.type && createdFromFields.type.length
+            ? createdFromFields.type[0].text
+            : '';
+
+        const createdFromAutoDeliveryPrice = createdFromFields[FIELD_AUTO_DELIVERY_PRICE];
+
+        if (createdFromAutoDeliveryPrice === false || createdFromType === 'Quotation') {
+            transaction.setValue({
+                fieldId: FIELD_AUTO_DELIVERY_PRICE,
+                value: false
+            });
+        }
+    }
+
+    return {
+        beforeLoad
+    };
+});

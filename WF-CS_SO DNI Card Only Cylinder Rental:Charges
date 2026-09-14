@@ -1,0 +1,43 @@
+/**
+ * @NApiVersion 2.1
+ * @NScriptType ClientScript
+ *
+ * Notes:
+ * The workflow SO Customer Specific DNI sets DNI based on the selected customer.
+ * If Customer is GMS7971, DNI is set to True.
+ * If Customer is not GMS7971, DNI is set to False.
+ */
+define([], () => {
+    const FIELD_CUSTOMER = 'entity';
+    const FIELD_DNI = 'custbody4';
+
+    const CUSTOMER_GMS7971 = 'GMS7971_INTERNAL_ID'; // Replace with actual customer internal ID
+
+    function pageInit(context) {
+        updateDni(context.currentRecord);
+    }
+
+    function fieldChanged(context) {
+        if (context.fieldId !== FIELD_CUSTOMER) {
+            return;
+        }
+
+        updateDni(context.currentRecord);
+    }
+
+    function updateDni(currentRecord) {
+        const customer = currentRecord.getValue({
+            fieldId: FIELD_CUSTOMER
+        });
+
+        currentRecord.setValue({
+            fieldId: FIELD_DNI,
+            value: String(customer) === CUSTOMER_GMS7971
+        });
+    }
+
+    return {
+        pageInit,
+        fieldChanged
+    };
+});

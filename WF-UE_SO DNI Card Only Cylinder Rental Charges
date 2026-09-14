@@ -1,0 +1,73 @@
+/**
+ * @NApiVersion 2.1
+ * @NScriptType UserEventScript
+ *
+ * Notes:
+ * The workflow SO DNI Card Only Cylinder Rental/Charges sets DNI to True
+ * when the Customer Status is EXISTING Card Only and the Order Type is
+ * Cylinder Charge or Cylinder Rentals.
+ */
+define(['N/record', 'N/search'], (record, search) => {
+    const FIELD_DNI = 'custbody4';
+    const FIELD_ORDER_TYPE = 'custbodygms_ordertype';
+
+    const CUSTOMER_STATUS_EXISTING_CARD_ONLY = 'EXISTING_CARD_ONLY'; 
+    const ORDER_TYPE_CYLINDER_CHARGE = '8';
+    const ORDER_TYPE_CYLINDER_RENTALS = '7';
+
+    function afterSubmit(context) {
+        if (context.type !== context.UserEventType.CREATE) {
+            return;
+        }
+
+        const salesOrder = context.newRecord;
+
+        const customerId = salesOrder.getValue({
+            fieldId: 'entity'
+        });
+
+        const orderType = salesOrder.getValue({
+            fieldId: FIELD_ORDER_TYPE
+        });
+
+        if (!customerId || !orderType) {
+            return;
+        }
+
+        const customerStatus = search.lookupFields({
+            type: search.Type.CUSTOMER,
+            id: customerId,
+            columns: ['entitystatus']
+        }).entitystatus;
+
+        const customerStatusId = customerStatus && customerStatus.length
+            ? customerStatus[0].value
+            : null;
+
+        const isExistingCardOnly = customerStatusId === CUSTOMER_STATUS_EXISTING_CARD_ONLY;
+
+        const isCylinderOrderType =
+            String(orderType) === ORDER_TYPE_CYLINDER_CHARGE ||
+            String(orderType) === ORDER_TYPE_CYLINDER_RENTALS;
+
+        if (!isExistingCardOnly || !isCylinderOrderType) {
+            return;
+        }
+
+        record.submitFields({
+            type: record.Type.SALES_ORDER,
+            id: salesOrder.id,
+            values: {
+                [FIELD_DNI]: true
+            },
+            options: {
+                enableSourcing: false,
+                ignoreMandatoryFields: true
+            }
+        });
+    }
+
+    return {
+        afterSubmit
+    };
+});

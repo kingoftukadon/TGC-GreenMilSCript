@@ -1,0 +1,24 @@
+/**
+ * @NApiVersion 2.1
+ * @NScriptType UserEventScript
+ *
+ * Notes:
+ * The workflow Form Entry Times sets Start of Form Entry Time
+ * when the transaction form loads or enters the workflow state.
+ */
+define([], () => {
+    const FIELD_START_FORM_ENTRY_TIME = 'custbody_start_form_entry_time';
+
+    function beforeLoad(context) {
+        const transaction = context.newRecord;
+
+        transaction.setValue({
+            fieldId: FIELD_START_FORM_ENTRY_TIME,
+            value: new Date()
+        });
+    }
+
+    return {
+        beforeLoad
+    };
+});

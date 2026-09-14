@@ -1,0 +1,56 @@
+/**
+ * @NApiVersion 2.1
+ * @NScriptType UserEventScript
+ *
+ * Notes:
+ * The workflow Engineer UI Order Pending Approval sets engineer orders
+ * to Pending Approval when the Order By Contact permission or user role
+ * requires approval.
+ */
+define(['N/runtime'], (runtime) => {
+    const FIELD_ORDER_BY_CONTACT = 'custbody_order_by_contact'; // Replace with actual field ID
+    const FIELD_PENDING_APPROVAL_REASON = 'custbody_pending_approval_reason'; // Replace with actual field ID
+
+    const FIELD_ORDER_STATUS = 'orderstatus';
+
+    const ORDER_STATUS_PENDING_APPROVAL = 'A'; // Confirm actual value
+    const REASON_ENGINEER_ORDERED = 'ENGINEER_ORDERED'; // Replace with actual internal ID
+
+    const CONTACT_PERMISSION_ENGINEER_NEEDS_APPROVAL = 'ENGINEER_NO_PRICING_APPROVAL'; // Replace with actual internal ID
+    const ROLE_GM_ENGINEER_WITHOUT_AUTHORITY = 'GM_ENGINEER_WITHOUT_AUTHORITY'; // Replace with actual role internal ID
+
+    function beforeSubmit(context) {
+        const salesOrder = context.newRecord;
+
+        const orderByContact = salesOrder.getValue({
+            fieldId: FIELD_ORDER_BY_CONTACT
+        });
+
+        const currentUser = runtime.getCurrentUser();
+        const currentRole = String(currentUser.role);
+
+        const isEngineerContactApprovalRequired =
+            String(orderByContact) === CONTACT_PERMISSION_ENGINEER_NEEDS_APPROVAL;
+
+        const isEngineerWithoutAuthority =
+            currentRole === ROLE_GM_ENGINEER_WITHOUT_AUTHORITY;
+
+        if (!isEngineerContactApprovalRequired && !isEngineerWithoutAuthority) {
+            return;
+        }
+
+        salesOrder.setValue({
+            fieldId: FIELD_ORDER_STATUS,
+            value: ORDER_STATUS_PENDING_APPROVAL
+        });
+
+        salesOrder.setValue({
+            fieldId: FIELD_PENDING_APPROVAL_REASON,
+            value: REASON_ENGINEER_ORDERED
+        });
+    }
+
+    return {
+        beforeSubmit
+    };
+});

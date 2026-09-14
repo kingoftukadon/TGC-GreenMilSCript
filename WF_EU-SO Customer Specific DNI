@@ -1,0 +1,38 @@
+/**
+ * @NApiVersion 2.1
+ * @NScriptType ClientScript
+ */
+define([], () => {
+  const CUSTOMER_GMS7971 = 'GMS7971';
+  const FIELD_CUSTOMER = 'entity';
+  const FIELD_DNI = 'custbody_dni'; // Replace with actual DNI field ID if different
+
+  function updateDniValue(currentRecord) {
+    const customerText = currentRecord.getText({
+      fieldId: FIELD_CUSTOMER
+    });
+
+    const isGmsCustomer = customerText === CUSTOMER_GMS7971;
+
+    currentRecord.setValue({
+      fieldId: FIELD_DNI,
+      value: isGmsCustomer,
+      ignoreFieldChange: true
+    });
+  }
+
+  function pageInit(context) {
+    updateDniValue(context.currentRecord);
+  }
+
+  function fieldChanged(context) {
+    if (context.fieldId === FIELD_CUSTOMER) {
+      updateDniValue(context.currentRecord);
+    }
+  }
+
+  return {
+    pageInit,
+    fieldChanged
+  };
+});

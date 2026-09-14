@@ -1,0 +1,49 @@
+/**
+ * @NApiVersion 2.1
+ * @NScriptType UserEventScript
+ *
+ * Notes:
+ * The workflow SO Default GMPrecision sets Ship Via to 3. GMprecision
+ * when On Site Time and Off Site Time both have values and the time
+ * difference is exactly 1 hour.
+ */
+define([], () => {
+    const FIELD_ON_SITE_TIME = 'custbodytime_on_site';
+    const FIELD_OFF_SITE_TIME = 'custbodytime_off_site';
+
+    const FIELD_SHIP_VIA = 'shipmethod';
+    const SHIP_VIA_GMPRECISION = '3';
+
+    const ONE_HOUR_IN_MS = 3600000;
+
+    function beforeSubmit(context) {
+        const salesOrder = context.newRecord;
+
+        const onSiteTime = salesOrder.getValue({
+            fieldId: FIELD_ON_SITE_TIME
+        });
+
+        const offSiteTime = salesOrder.getValue({
+            fieldId: FIELD_OFF_SITE_TIME
+        });
+
+        if (!onSiteTime || !offSiteTime) {
+            return;
+        }
+
+        const timeDifference = Math.abs(
+            new Date(offSiteTime).getTime() - new Date(onSiteTime).getTime()
+        );
+
+        if (timeDifference === ONE_HOUR_IN_MS) {
+            salesOrder.setValue({
+                fieldId: FIELD_SHIP_VIA,
+                value: SHIP_VIA_GMPRECISION
+            });
+        }
+    }
+
+    return {
+        beforeSubmit
+    };
+});
